@@ -45,7 +45,7 @@ Imported.ZERO_DebugWinBattle = 1;
 ZERO.DebugWinBattle = ZERO.DebugWinBattle || {};
 
 (function ($) {
-    // Get plugin name an parameters
+    // Get plugin name and parameters
     var substrBegin = document.currentScript.src.lastIndexOf('/');
     var substrEnd = document.currentScript.src.indexOf('.js');
     var scriptName = document.currentScript.src.substring(substrBegin+1, substrEnd);

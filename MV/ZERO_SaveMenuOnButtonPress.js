@@ -39,7 +39,7 @@ Imported.ZERO_ActionOnButton = 1;
 ZERO.ActionOnButton = ZERO.ActionOnButton || {};
 
 
-(function ($) {// Get plugin name an parameters
+(function ($) {// Get plugin name and parameters
   var substrBegin = document.currentScript.src.lastIndexOf('/');
   var substrEnd = document.currentScript.src.indexOf('.js');
   var scriptName = document.currentScript.src.substring(substrBegin+1, substrEnd);

@@ -72,7 +72,7 @@ Imported.ZERO_WalkingSpeed = 1;
 ZERO.WalkingSpeed = ZERO.WalkingSpeed || {};
 
 (function($) {
-    // Get plugin name an parameters
+    // Get plugin name and parameters
     var substrBegin = document.currentScript.src.lastIndexOf('/');
     var substrEnd = document.currentScript.src.indexOf('.js');
     var scriptName = document.currentScript.src.substring(substrBegin+1, substrEnd);
