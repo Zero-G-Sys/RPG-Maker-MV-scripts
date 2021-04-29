@@ -6,7 +6,7 @@
 * @plugindesc Hide textbox or make textbox invisible while showing text.
 * @title Hide Message Window Z
 * @author Zero_G
-* @version 2.3 alt
+* @version 2.3.1 alt
 * @filename ZERO_HideMessageWindowZ.js
 * @help 
 -------------------------------------------------------------------------------
@@ -47,6 +47,9 @@ and the closing of the anonymous function (line 2074)
 
 == Change Log ==
 
+2.3.1 alt
+ - Fix some bugs in add nameboxes function
+ - Fix writefile function
 2.3 alt
  - Save new names to file with empty translation (for easier use of filling name)
 2.2 alt
@@ -144,19 +147,30 @@ ZERO.HideMessageWindow = ZERO.HideMessageWindow || {};
 
   function writeFile(file, data){
     let absolutePath = process.cwd();
-    absolutePath = absolutePath + '/' + file + '.json';
+    if(!absolutePath.includes('www')) absolutePath = absolutePath + '\\www';
+    absolutePath = absolutePath + '\\' + file + '.json';
     fs.writeFileSync(absolutePath, JSON.stringify(data, null, 2));
   }
 
   function readFile(file){
     let absolutePath = process.cwd();
-    absolutePath = absolutePath + '/' + file + '.json';
+    if(!absolutePath.includes('www')) absolutePath = absolutePath + '\\www';
+    absolutePath = absolutePath + '\\' + file + '.json';
     if(fs.existsSync(absolutePath)){
       let rawData = fs.readFileSync(absolutePath);
       let jsonData = JSON.parse(rawData);
       return jsonData;
     }
   }
+  
+  // Make a backup of stored names when game loads
+  (function() {
+    let fileNames = readFile('savedNames');
+    if(Object.keys(fileNames).length !== 0 // Check not empty
+      && fileNames.constructor === Object){
+        writeFile('savedNamesBackup', fileNames);
+      }
+  })()
 
   function fileExists(file){
     let absolutePath = process.cwd();
@@ -246,12 +260,24 @@ ZERO.HideMessageWindow = ZERO.HideMessageWindow || {};
     Window_Message.prototype.startMessage = function () {
       ZERO_Window_Message_prototype_startMessage.call(this);
       //console.log(this._textState.text+'\n'); // log name and text
+
+      // for RJ273744, remove line breaks at start of text
+      this._textState.text
+      while(this._textState.text.startsWith('\n')){
+        this._textState.text = this._textState.text.replace('\n', '');
+      }
+      if(/^(「|（)/.test(this._textState.text)){
+        this._textState.text = '\\N<Kurokami>' + this._textState.text;
+      }
+
+
       // add \n<> to name
-      
-      // All names
-      if(this._textState.text.indexOf('\n') < namesLenght){ // if first line is x amount of characters
+      if(!/^(「|（|『| |\.|…)/.test(this._textState.text)   // Check that text doesn't start with quotation or space or .
+      && this._textState.text.indexOf('\n') < namesLenght // if first line is x amount of characters
+      && this._textState.text.indexOf('\n') !== -1        // text is more than one line
+      && this._textState.text.indexOf('\n') !== 0){      // text doesn't start with a line break
         if(usingQuotation){
-          if(this._textState.text.indexOf('「') != -1  // Sentence includes thes two characters
+          if(this._textState.text.indexOf('「') != -1  // Sentence includes at least one of these three quotations
           || this._textState.text.indexOf('（') != -1 
           || this._textState.text.indexOf('『') != -1){
             this._textState.text = '\\N<' + this._textState.text; // add first part of namebox
@@ -259,9 +285,8 @@ ZERO.HideMessageWindow = ZERO.HideMessageWindow || {};
           }
         }else{
           this._textState.text = '\\N<' + this._textState.text;
-            this._textState.text = this._textState.text.replace('\n', '>');
+          this._textState.text = this._textState.text.replace('\n', '>');
         }
-        
       }
       this._textState.text = this.convertEscapeCharacters(this._textState.text); //Call escape characters again to create namebox
     };
@@ -394,8 +419,10 @@ ZERO.HideMessageWindow = ZERO.HideMessageWindow || {};
       if(!nameReplaced){
         let newName = this._text;
         newName = newName.replace(/\\(c|C)\[\d{1,2}\]/g, '') // Remove color codes
-        fileNames[newName] = '';
-        writeFile('savedNames', fileNames);
+        if(newName !== ''){
+          fileNames[newName] = '';
+          writeFile('savedNames', fileNames);
+        }
       }
 
 

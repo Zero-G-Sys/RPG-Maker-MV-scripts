@@ -18,9 +18,9 @@
 
 //=============================================================================
 
-/* ----------------------------/
-/* Changes done by Zero_G v1.13/
-/*-----------------------------/
+/* -------------------------------/
+/* Changes done by Zero_G v1.13.1 /
+/*--------------------------------/
  !!! Important !!! 
   SetClipboardText and (if used) HideMessageWindowZ_NameMod must be loaded before this script
 
@@ -42,6 +42,7 @@ v1.12 - Added remove tranlsated names if they are defined in HideMessageWindowZ 
       - Add option to disable clipboard during battles (can be toggle mid battle with 't')
 v1.13 - Remove color codes from imported names from translated names added in HideMessageWindowZ
       - Add variables for text that starts with ... and when text is in between parentheses (to be handled by SetClipboardText)
+v1.13.1 - Fix a bug with importing empty names for ignore regexbloc
 */
 
 // Zero_G Variables (configure)
@@ -478,7 +479,7 @@ function RegEXspeIgnore(Bloc) {
           break;
         }
       }
-      if(!exist){
+      if(!exist && name !== ''){
         let re = new RegExp(name);
         IgnoreRegExtextbloc.push(re);
       }

@@ -4,7 +4,7 @@
 /*:
  * @ZERO_SetClipboardText
  * @plugindesc Insert clipboard text into game textbox
- * @version 1.12
+ * @version 1.14
  * @author Zero_G
  * @filename ZERO_SetClipboardText.js
  * @help
@@ -42,6 +42,9 @@
  - Please provide credits to Zero_G
 
  == Changelog ==
+ 1.14   -Fix translated choiceboxes with number of choices larger than box, that required scrolling and drawing
+         new choices. Now translated choices are replaced to MV own choice arraw.
+        -Fix write/read file functions.
  1.13   -Modify/handle text when it's surronded by parentheses or it starts with '...' (corrections for DeepL)
  1.12   -Ditched plugin parameters, replaced for manual configuration variables
         -Added option to store/cache translations on a file
@@ -371,6 +374,7 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
   var translatedChoices = [];
   var windowTextWithChoices = false;
   var translatedWindowText = '';
+  var globalChoicesText= '';
 
   // Access Window_ChoiceList methods from Widnows_Selectable
   Window_Selectable.prototype.updatePlacement = function() {
@@ -437,6 +441,7 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
       choice = Window_Base.prototype.convertEscapeCharacters(choice);
       text += '['+ choice + '].'; // DeepL understands '.' as a sentence break
     });  
+    globalChoicesText = text;
 
     // If there is a window message send it together with choices as last item
     // so that there is no need to send two translation requests
@@ -525,7 +530,8 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
       }
     }
 
-    // Get choice with max lenght
+
+    // Get choice with max lenght and remove []
     for (let i = 0; i < translatedChoices.length; i++) {
       translatedChoices[i] = translatedChoices[i].replace(/(|\[)(| )\[/, ''); // remove '['
       translatedChoices[i] = translatedChoices[i].replace(']', ''); // remove ']'
@@ -538,15 +544,20 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
     if(width < 132) width = 132;
     this.updatePlacement(true, width);
 
-    // Clear and draw new items (Refresh)
+    // Replace choices with translated ones (no direct assignment in case traslation wrongly gives fewer choices)
     for (let i = 0; i < $gameMessage.choices().length; i++) {
-      this.clearItem(i);
-      this.drawItem(i, true); // Call custom code in drawItem with second parameter (true) to draw from translatedChoices
+      if(translatedChoices[i]) $gameMessage.choices()[i] = translatedChoices[i];
     }
+
+    // Clear and draw new (translated) items
+    this.refresh();
+    // Redraw cursor in case choicebox is bigger
+    this.ensureCursorVisible();
+    this.updateCursor(); 
 
     // If there is a text window replace that text after replacing choices
     if($gameMessage._texts.length){ 
-      // If window message update is disabled or gives problems 
+      // If window_message.prototype.update is disabled or gives problems 
       // an alternate method of showing the message can be trying to push (MV function) new text window
 
       // This will trigger code in Window_Message update, translated text is in global var translatedWindowText
@@ -566,20 +577,6 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
       }, 500);
     }
   }
-
-  // Override, add parameter
-  // Draw tranlsated choices array when override param set to true
-  Window_ChoiceList.prototype.drawItem = function(index, override = false) {
-    var rect = this.itemRectForText(index);
-    if(override) {
-      if (typeof translatedChoices[index] !== 'undefined')
-      {
-        this.drawTextEx(translatedChoices[index].trim(), rect.x, rect.y); // draw translated choices
-      }
-      this.selectDefault(); // refresh selecting rectangle
-    }
-    else this.drawTextEx(this.commandName(index), rect.x, rect.y); // draw original choices
-  };
   // ***** End Choices Replace ***** //
 
 
@@ -593,11 +590,18 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
       let choices = $gameMessage._choices;
       if(choices.length > 0){
         let text = '';
-        choices.forEach(function(choice, index) {
-          //choice = text = text.replace(/(\\|\/)(c|C)\[\d{1,3}\]/g, '');  
-          choice = Window_Base.prototype.convertEscapeCharacters(choice);
-          text += (index+1) + '[' + choice + ']. '; // DeepL understands '.' as a sentence break
-        }); 
+        
+        // If using auto replace choices, they were already processed and replaced, 
+        // so get the untranslated ones from a global var
+        if($.autoReplaceChoices){
+          text = globalChoicesText;
+        } else {
+          choices.forEach(function(choice, index) {
+            //choice = text = text.replace(/(\\|\/)(c|C)\[\d{1,3}\]/g, '');  
+            choice = Window_Base.prototype.convertEscapeCharacters(choice);
+            text += (index+1) + '[' + choice + ']. '; // DeepL understands '.' as a sentence break
+          });
+        }
 
         clipboard.set(text, 'text');
         textOverflowed = false; // Discard rest of text if it was overflowed
@@ -966,17 +970,22 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
 
   function writeFile(file, data){
     let absolutePath = process.cwd();
+    if(!absolutePath.includes('www')) absolutePath = absolutePath + '\\www';
+
     let fs = require('fs');
 
-    absolutePath = absolutePath + '/' + file + '.json';
+    absolutePath = absolutePath + '\\' + file + '.json';
     fs.writeFileSync(absolutePath, JSON.stringify(data, null, 2)/*, 'utf16le'*/);
   }
 
   function readFile(file){
     let absolutePath = process.cwd();
+    if(!absolutePath.includes('www')) absolutePath = absolutePath + '\\www';
+    
     let fs = require('fs');
 
-    absolutePath = absolutePath + '/' + file + '.json';
+    absolutePath = absolutePath + '\\' + file + '.json';
+
     if(fs.existsSync(absolutePath)){
       let rawData = fs.readFileSync(absolutePath/*, 'utf16le'*/);
       let jsonData = JSON.parse(rawData);
