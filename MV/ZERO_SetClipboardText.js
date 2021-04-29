@@ -4,7 +4,7 @@
 /*:
  * @ZERO_SetClipboardText
  * @plugindesc Insert clipboard text into game textbox
- * @version 1.14.1
+ * @version 1.14.2
  * @author Zero_G
  * @filename ZERO_SetClipboardText.js
  * @help
@@ -42,6 +42,8 @@
  - Please provide credits to Zero_G
 
  == Changelog ==
+ 1.14.2 -Try to fix translation of previous textbox showing on next one. Sometimes happens when you advance text
+         without wating for translation to be replaced. Only affects autoinsert mode.
  1.14.1 -Add %23 to heart replace as it DeepL not always convert it to #
         -Add option to choose to which heart to restore to
  1.14   -Fix translated choiceboxes with number of choices larger than box, that required scrolling and drawing
@@ -127,7 +129,7 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
 
  // * Description: Change font size of translated text. Most games use 28, leave at 0 to use game default.
  // * Defualt 0
- $.fontSize = 0;
+ $.fontSize = 26;
 
  //* Description: Auto insert translated text without manual button press. Recommended to on
  //* Default: true
@@ -260,6 +262,10 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
   var skipCachedText = false;
   var autoSelectChoice = false;
   var skipChoice = false;
+  // used to know if replace is replacing the correct textbox
+  // will increase on each message, and if replace recives a different value
+  // of the current counter, it stops
+  var messageCounter = 0; 
 
   // Add key mappings
   function addKeyMapping(key){
@@ -354,6 +360,7 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
     $.escapeText = true;
     $.replacingChoicesStopIlule = false;
     stopDrawingText = false;
+    messageCounter++;
     
     // prevent from setting wait to false if next in game message was shown before
     // translation appeared (changing text too fast causes this)
@@ -665,7 +672,7 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
               break;
             }
             // Text in cache found, display it
-            this.replaceText(storedTranslations[japText]);
+            this.replaceText(storedTranslations[japText], messageCounter);
             break;
           }
         }
@@ -723,11 +730,11 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
             }
 
             if ($.ignoreTextStartWith){
-              if (!clipboardText.startsWith($.ignoreTextStr)) this.replaceText(clipboardText);
+              if (!clipboardText.startsWith($.ignoreTextStr)) this.replaceText(clipboardText, messageCounter);
             }else if($.ignoreJapText){
-              if (clipboardText.search(/[一-龠]+|[ぁ-ゔ]+|[ァ-ヴー]+|[ａ-ｚＡ-Ｚ０-９]+|[々〆〤！？]+/u) == -1) this.replaceText(clipboardText);
+              if (clipboardText.search(/[一-龠]+|[ぁ-ゔ]+|[ァ-ヴー]+|[ａ-ｚＡ-Ｚ０-９]+|[々〆〤！？]+/u) == -1) this.replaceText(clipboardText, messageCounter);
             }else{
-              this.replaceText(clipboardText);
+              this.replaceText(clipboardText, messageCounter);
             }
           }
         }   
@@ -751,10 +758,23 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
 
   // New method
   // Get tranlated text, wordwrap it and insert it in current textbox
-  Window_Message.prototype.replaceText = function (text){
-    $.escapeText = false; // Prevent this function from being called until its done
-    stopDrawingText = true;
+  Window_Message.prototype.replaceText = function (text, localMessageCounter = false){
     wait = true;
+    $.escapeText = false; // Prevent this function from being called until its done
+
+    // Stop function if trying to replace next textbox (not the textbox from where this 
+    // function was called), only autoinsert function sets the localMessageCounter var
+    if(localMessageCounter){ // Only enter when localMessageCounter variable is set
+      if(localMessageCounter !== messageCounter){
+        // Wait a little before entering again
+        setTimeout(() => {
+          $.escapeText = true
+        }, 300);
+        return;
+      }
+    }
+        
+    stopDrawingText = true;
     
 	  // Get text from clipboard or if text overflowed rest of the text
     if (textOverflowed) {
