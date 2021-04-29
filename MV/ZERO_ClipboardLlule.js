@@ -19,7 +19,7 @@
 //=============================================================================
 
 /* -------------------------------/
-/* Changes done by Zero_G v1.13.1 /
+/* Changes done by Zero_G v1.13.2 /
 /*--------------------------------/
  !!! Important !!! 
   SetClipboardText and (if used) HideMessageWindowZ_NameMod must be loaded before this script
@@ -43,6 +43,7 @@ v1.12 - Added remove tranlsated names if they are defined in HideMessageWindowZ 
 v1.13 - Remove color codes from imported names from translated names added in HideMessageWindowZ
       - Add variables for text that starts with ... and when text is in between parentheses (to be handled by SetClipboardText)
 v1.13.1 - Fix a bug with importing empty names for ignore regexbloc
+v1.13.2 - Renamed variable hearthCharacter to hasHeartCharacter
 */
 
 // Zero_G Variables (configure)
@@ -72,7 +73,7 @@ var clipboardDisabled = false; // for switching sending text to clipboard
 var textToSend = '';
 var drawExTimer = null; // for storing a setTimeout
 var translationSent = false; // Used in SetClipboardText
-var hearthCharacter = false; // Used in SetClipboardText
+var hasHearthCharacter = false; // Used in SetClipboardText
 var textInBetweenParentheses = false; // Used in SetClipboardText
 var textStartsWithDots = false; // Used in SetClipboardText
 /*------------------------------------------------------------------*/
@@ -317,8 +318,8 @@ function ClipTimerSend() {
     if(MemText.includes('♡') || MemText.includes('♥')){
       MemText = MemText.replace(/♡/g,'%23'); // %23 is urlURI code for #
       MemText = MemText.replace(/♥/g,'%23');
-      hearthCharacter = true; 
-    }else hearthCharacter = false;
+      hasHearthCharacter = true; 
+    }else hasHearthCharacter = false;
 
     // Replace words (for names, etc)
     for (const [key, value] of Object.entries(replacements)) {

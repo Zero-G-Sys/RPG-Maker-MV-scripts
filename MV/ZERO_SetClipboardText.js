@@ -4,7 +4,7 @@
 /*:
  * @ZERO_SetClipboardText
  * @plugindesc Insert clipboard text into game textbox
- * @version 1.14
+ * @version 1.14.1
  * @author Zero_G
  * @filename ZERO_SetClipboardText.js
  * @help
@@ -42,6 +42,8 @@
  - Please provide credits to Zero_G
 
  == Changelog ==
+ 1.14.1 -Add %23 to heart replace as it DeepL not always convert it to #
+        -Add option to choose to which heart to restore to
  1.14   -Fix translated choiceboxes with number of choices larger than box, that required scrolling and drawing
          new choices. Now translated choices are replaced to MV own choice arraw.
         -Fix write/read file functions.
@@ -204,6 +206,13 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
  // If not using it set it to 500.
  //* Default: 500
  $.autoAdvanceTextWait = 500
+
+ // DeepL doesn't like heart characters, so sent text replaces them with a # (%23 uri character)
+ // Then restores them in the text to insert
+ // Currently always does it despite variable (TODO)
+ $.replaceHeartCaratcters = true
+ // Hearth character to restore (This works)
+ heartCharacter = '\\c[27]♥\\c[0]' // options ♡ ♥ or with pink color \\c[27]♥\\c[0]
 
  //* Description: Replacements to be made to text after translation. Left if text to be replaced
  // right is replacement. Left accepts regex, be careful, as it is a string and it will
@@ -746,10 +755,6 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
     $.escapeText = false; // Prevent this function from being called until its done
     stopDrawingText = true;
     wait = true;
-
-    // Restore hearth to text
-    if(hearthCharacter && !text.includes('#')) text = text + '♡'; 
-    else text = text.replace(/#/g, '♡');
     
 	  // Get text from clipboard or if text overflowed rest of the text
     if (textOverflowed) {
@@ -768,13 +773,21 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
       // As hearth characters use 2 spaces, and can't really be quantified correctly
       // in the word wrapp, substract some characters of maxium width
       // Minimum or 4 hearth on sentence to enter.
-      if(hearthCharacter){
-        let count = (text.match(/♡/g) || []).length;
+      // Deprecated moved restore heart to after wordwrap
+      /*if(hasHearthCharacter){
+        let count = (text.match(/(♡|♥)/g) || []).length;
         if(count > 3) wordWrapWidth = wordWrapWidth - 8 
-      } 
+      } */
 
       text = wordWrapper(text, wordWrapWidth);
       //console.log('After wordwrap: ' + text);
+
+      // Restore hearth to text
+      if(hasHearthCharacter && (!text.includes('#') && !text.includes('%23'))) text = text + heartCharacter; 
+      else {
+        text = text.replace(/#/g, heartCharacter);
+        text = text.replace(/%23/g, heartCharacter);
+      }
     }
 
     // Check if text overflows from page
@@ -789,6 +802,8 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
 		  textOverflowed = false;
     }
     
+    // Process colors and other special characters in new text (must be manually added)
+    text = this.convertEscapeCharacters(text);
 	  // Prepare text for textbox
     this._textState1 = {};
     this._textState1.index = 0;
@@ -998,9 +1013,9 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
     if(text.includes('♡') || text.includes('♥')){
       text = text.replace(/♡/g,'%23'); // %23 is urlURI code for #
       text = text.replace(/♥/g,'%23');
-      if(hearthCharacter) hearthCharacter = true; 
+      if(typeof hasHearthCharacter !== 'undefined') hasHearthCharacter = true;
     }else{
-      if(hearthCharacter) hearthCharacter = false;
+      if(typeof hasHearthCharacter !== 'undefined') hasHearthCharacter = false;
     }
     return text
   }
