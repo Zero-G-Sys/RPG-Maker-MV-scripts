@@ -129,7 +129,7 @@ ZERO.SetClipboardText = ZERO.SetClipboardText || {};
 
  // * Description: Change font size of translated text. Most games use 28, leave at 0 to use game default.
  // * Defualt 0
- $.fontSize = 26;
+ $.fontSize = 0;
 
  //* Description: Auto insert translated text without manual button press. Recommended to on
  //* Default: true
