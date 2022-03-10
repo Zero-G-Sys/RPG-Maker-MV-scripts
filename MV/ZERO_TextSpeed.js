@@ -4,7 +4,7 @@
 /*:
 * @TextSpeed
 * @plugindesc Text speed control, slow/fast/instant text
-* @version 1.1
+* @version 1.2
 * @author Zero_G
 * @filename ZERO_TextSpeed.js
 * @help
@@ -31,6 +31,8 @@ Default possible values:
 -Most of option menu based on Yanfly - MessageSpeedOpt
 
 == Changelog ==
+1.2 - Fix a bug where sometimes the next letter would be displayed when
+      using wait escape codes ( \. or \| or \! )
 1.1 - Change speed options to customizable text.
 1.0 - Initial Release.
 
@@ -43,7 +45,7 @@ Default possible values:
 -------------------------------------------------------------------------------
 @param Default text speed
 @desc Default text speed for menu.
-@default 2
+@default 4
 
 @param Option menu text
 @desc The name of the option to be used.
@@ -91,7 +93,7 @@ ZERO.TextSpeed = ZERO.TextSpeed || {};
     var substrEnd = document.currentScript.src.indexOf('.js');
     var scriptName = document.currentScript.src.substring(substrBegin+1, substrEnd);
     $.params = PluginManager.parameters(scriptName);
-    
+
     $.textSpeed = Number($.params["Default text speed"].trim());
     $.menuText = $.params["Option menu text"].trim();
     $.textSpeed1 = $.params["Text Speed 1"].trim();
@@ -214,7 +216,8 @@ ZERO.TextSpeed = ZERO.TextSpeed || {};
                 if (this.needsNewPage(this._textState)) {
                     this.newPage(this._textState);
                 }
-                this.updateShowFast();
+                this.updateShowFast(); 
+
                 switch (this.messageSpeed()) {
                     case 0:
                         this.startWait(2);
@@ -225,16 +228,16 @@ ZERO.TextSpeed = ZERO.TextSpeed || {};
                     case 2:
                         break
                     case 3:    
-                        this.processCharacter(this._textState);
+                        this.processCharacter2(this._textState);
                         this.startWait(1);
-                        this.processCharacter(this._textState);
+                        this.processCharacter2(this._textState);
                         break
                     case 4:
-                        this.processCharacter(this._textState);
+                        this.processCharacter2(this._textState);
                         break
                     case 5:    
-                        this.processCharacter(this._textState);
-                        this.processCharacter(this._textState);
+                        this.processCharacter2(this._textState);
+                        this.processCharacter2(this._textState);
                         break
                     case 6:
                         this._showFast = true;
@@ -256,6 +259,42 @@ ZERO.TextSpeed = ZERO.TextSpeed || {};
             return true;
         } else {
             return false;
+        }
+    };
+
+    /* 
+     * Call process character checking first if the next character is
+     * a wait \. \| or \! 
+     * In that case ignore it and let the default processCharacter handle it
+     */
+    Window_Base.prototype.processCharacter2 = function(textState) {
+        let process = true;
+
+        if(textState.text[textState.index] == '\x1b'){
+            let escapeChar = this.obtainEscapeCodeWithoutIncrementingIndex(this._textState);
+            
+            switch(escapeChar) {
+                case '.':
+                case '|':
+                case '!':
+                    process = false;
+                    break;
+            }
+        }
+
+        if (process) this.processCharacter(textState);
+    }
+
+
+    Window_Base.prototype.obtainEscapeCodeWithoutIncrementingIndex = function(textState) {
+        //textState.index++;
+        var regExp = /^[\$\.\|\^!><\{\}\\]|^[A-Z]+/i;
+        var arr = regExp.exec(textState.text.slice(textState.index + 1));
+        if (arr) {
+            //textState.index += arr[0].length;
+            return arr[0].toUpperCase();
+        } else {
+            return '';
         }
     };
 })(ZERO.TextSpeed);
