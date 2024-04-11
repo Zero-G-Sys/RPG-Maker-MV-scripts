@@ -4,7 +4,7 @@
 /*:
 * @TextSpeed
 * @plugindesc Text speed control, slow/fast/instant text
-* @version 1.2
+* @version 1.4
 * @author Zero_G
 * @filename ZERO_TextSpeed.js
 * @help
@@ -31,10 +31,13 @@ Default possible values:
 -Most of option menu based on Yanfly - MessageSpeedOpt
 
 == Changelog ==
-1.2 - Fix a bug where sometimes the next letter would be displayed when
-      using wait escape codes ( \. or \| or \! )
-1.1 - Change speed options to customizable text.
-1.0 - Initial Release.
+1.3.1 - Fix a bug where some characters were missing in text after battles
+        Compatibility fix with VE SFont script
+1.3.0 - Add toggle instant text key
+1.2.0 - Fix a bug where sometimes the next letter would be displayed when
+        using wait escape codes ( \. or \| or \! )
+1.1.0 - Change speed options to customizable text.
+1.0.0 - Initial Release.
 
 == Terms of Use ==
  - Free for use in non-commercial projects
@@ -45,11 +48,28 @@ Default possible values:
 -------------------------------------------------------------------------------
 @param Default text speed
 @desc Default text speed for menu.
-@default 4
+@type select
+@option 1
+@option 2
+@option 3
+@option 4
+@option 5
+@option 6
+@option 7
+@default 5
 
 @param Option menu text
 @desc The name of the option to be used.
 @default Message Speed
+
+@param Enable toggle instant speed
+@desc Enable the use of a key to toggle instant text speed
+@type boolean
+@default true
+
+@param Toggle instant text speed key
+@desc Toggle instant text speed key
+@default f
 
 @param Text Speed 1
 @desc Option display text for 1/3 speed
@@ -79,7 +99,6 @@ Default possible values:
 @desc Option display text for instant text
 @default Instant
 -------------------------------------------------------------------------------
-
 */
 
 var Imported = Imported || {};
@@ -94,15 +113,48 @@ ZERO.TextSpeed = ZERO.TextSpeed || {};
     var scriptName = document.currentScript.src.substring(substrBegin+1, substrEnd);
     $.params = PluginManager.parameters(scriptName);
 
-    $.textSpeed = Number($.params["Default text speed"].trim());
-    $.menuText = $.params["Option menu text"].trim();
-    $.textSpeed1 = $.params["Text Speed 1"].trim();
-    $.textSpeed2 = $.params["Text Speed 2"].trim();
-    $.textSpeed3 = $.params["Text Speed 3"].trim();
-    $.textSpeed4 = $.params["Text Speed 4"].trim();
-    $.textSpeed5 = $.params["Text Speed 5"].trim();
-    $.textSpeed6 = $.params["Text Speed 6"].trim();
-    $.textSpeed7 = $.params["Text Speed 7"].trim();
+    $.textSpeed = Number($.params['Default text speed'].trim());
+    $.menuText = $.params['Option menu text'].trim();
+    $.enableKey = ($.params['Enable toggle instant speed'].trim() === 'true');
+    $.toggleKey = $.params['Toggle instant text speed key'].trim();
+    $.textSpeed1 = $.params['Text Speed 1'].trim();
+    $.textSpeed2 = $.params['Text Speed 2'].trim();
+    $.textSpeed3 = $.params['Text Speed 3'].trim();
+    $.textSpeed4 = $.params['Text Speed 4'].trim();
+    $.textSpeed5 = $.params['Text Speed 5'].trim();
+    $.textSpeed6 = $.params['Text Speed 6'].trim();
+    $.textSpeed7 = $.params['Text Speed 7'].trim();
+    var instantText = false;
+
+    // Add key mappings
+    function addKeyMapping(key){
+        let buttonCode = key.toUpperCase().charCodeAt(0);
+
+        // Prevent from mapping predefined strings (ej: 'pageup', 'left')
+        for (const [key_, value] of Object.entries(Input.keyMapper)) {
+        if(key.localeCompare(value) == 0) return key;
+        }
+
+        if (Input.keyMapper[buttonCode] === undefined) {
+        Input.keyMapper[buttonCode] = key;
+        return key;
+        }else{
+        // If it was already defined, return the char/string it was defined with
+        return Input.keyMapper[buttonCode];
+        }
+    }
+
+    $.toggleKey = addKeyMapping($.toggleKey);
+
+    // Alias update. Read input for toggle instant key during text
+    var ZERO_WindowMessage_update = Window_Message.prototype.update;
+    Window_Message.prototype.update = function() { 
+        if (Input.isTriggered($.toggleKey)) {
+            instantText = !instantText;
+        }
+
+        ZERO_WindowMessage_update.call(this);
+    };
 
     /*
      * Add option in menu
@@ -218,6 +270,8 @@ ZERO.TextSpeed = ZERO.TextSpeed || {};
                 }
                 this.updateShowFast(); 
 
+                if(instantText) this._showFast = true;
+
                 switch (this.messageSpeed()) {
                     case 0:
                         this.startWait(2);
@@ -269,7 +323,9 @@ ZERO.TextSpeed = ZERO.TextSpeed || {};
      */
     Window_Base.prototype.processCharacter2 = function(textState) {
         let process = true;
-
+        console.log('process before: ' + VictorEngine.lala);
+        VictorEngine.lala = textState.text[textState.index];
+        console.log('process after: ' + VictorEngine.lala);
         if(textState.text[textState.index] == '\x1b'){
             let escapeChar = this.obtainEscapeCodeWithoutIncrementingIndex(this._textState);
             
@@ -282,12 +338,20 @@ ZERO.TextSpeed = ZERO.TextSpeed || {};
             }
         }
 
-        if (process) this.processCharacter(textState);
+        // Don't process on "Form feed", only used during battles, prevents missing characters
+        if(textState.text[textState.index] == '\f') process = false;
+
+        if (process && textState.text[textState.index]) this.processCharacter(textState);
+    }
+
+    // Prevent sending undefined characters when using other plugins (VS Fonts for example)
+    var ZERO_Window_Base_processCharacter = Window_Base.prototype.processCharacter;
+    Window_Base.prototype.processCharacter = function(textState) {
+        if(textState.text[textState.index]) ZERO_Window_Base_processCharacter.call(this, textState);
     }
 
 
     Window_Base.prototype.obtainEscapeCodeWithoutIncrementingIndex = function(textState) {
-        //textState.index++;
         var regExp = /^[\$\.\|\^!><\{\}\\]|^[A-Z]+/i;
         var arr = regExp.exec(textState.text.slice(textState.index + 1));
         if (arr) {
