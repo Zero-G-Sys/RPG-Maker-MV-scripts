@@ -4,7 +4,7 @@
 /*:
 * @TextSpeed
 * @plugindesc Text speed control, slow/fast/instant text
-* @version 1.4
+* @version 1.4.1
 * @author Zero_G
 * @filename ZERO_TextSpeed.js
 * @help
@@ -31,7 +31,7 @@ Default possible values:
 -Most of option menu based on Yanfly - MessageSpeedOpt
 
 == Changelog ==
-1.3.1 - Fix a bug where some characters were missing in text after battles
+1.4.1 - Fix a bug where some characters were missing in text after battles
         Compatibility fix with VE SFont script
 1.3.0 - Add toggle instant text key
 1.2.0 - Fix a bug where sometimes the next letter would be displayed when
